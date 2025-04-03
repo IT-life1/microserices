@@ -90,5 +90,5 @@ jobs:
           git add -u
 
           # Commit changes if there are any
-          git diff --quiet || git commit -m "Update deployment manifests with new image tags"
+          git commit -m "Update deployment manifests with new image tags"
           git push https://${{ github.USERNAME }}:${{ secrets.TOKEN }}@github.com/IT-life1/microserices.git main
