@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: notification
-          image: amozgov/notification
+          image: amozgov/notification-service:6ebcacae12b50afeaa9d9d6fb92438dc740e72d5
           ports:
             - containerPort: 5000 # Add the port if your app listens on one
           envFrom:
