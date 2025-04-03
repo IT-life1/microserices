@@ -29,20 +29,20 @@ jobs:
             echo "Processing $service..."
 
             # Skip if the service directory doesn't exist
-            if [ ! -d "./$service" ]; then
+            if [ ! -d "$GITHUB_WORKSPACE/$service" ]; then
               echo "Service directory not found: $service"
               continue
             fi
 
             # Build the Docker image with the GitHub SHA as the tag
             IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/$service:${{ github.sha }}"
-            docker build ./$service -t $IMAGE_NAME
+            docker build $GITHUB_WORKSPACE/$service -t $IMAGE_NAME
 
             # Push the image to Docker Hub
             docker push $IMAGE_NAME
 
             # Update the deployment.yaml file with the new image name
-            DEPLOYMENT_FILE="./$service/manifest/deployment.yaml"
+            DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
             if [ -f "$DEPLOYMENT_FILE" ]; then
               echo "Updating $DEPLOYMENT_FILE with image: $IMAGE_NAME"
               sed -i "s|image: .*|image: $IMAGE_NAME|" "$DEPLOYMENT_FILE"
