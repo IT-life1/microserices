@@ -62,17 +62,4 @@ jobs:
 
           # Commit changes if there are any
           git diff --quiet || git commit -m "Update deployment manifests with new image tags"
-
-      # Step 5: Create a Pull Request
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update-manifests-${{ github.run_number }}
-          base: main
-          title: "Update deployment manifests with new image tags"
-          body: |
-            This PR updates the Kubernetes manifests with new image tags based on the latest build.
-            - Images are tagged with the GitHub SHA: `${{ github.sha }}`.
-            - Updated manifests are located in the respective service directories.
-          labels: automated-update
+          git push https://${{ github.USERNAME }}:${{ secrets.TOKEN }}@github.com/IT-life1/microserices.git main
