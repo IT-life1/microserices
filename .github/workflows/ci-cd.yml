@@ -62,6 +62,24 @@ jobs:
             fi
           done
 
+      - name: Update deployment.yaml
+        run: |
+          for service in auth-service gateway-service converter-service notification-service; do
+            DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
+            if [ -f "$DEPLOYMENT_FILE" ]; then
+              echo "Before update:"
+              cat "$DEPLOYMENT_FILE"
+      
+              IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/$service:${{ github.sha }}"
+              sed -i "s|image: .*|image: $IMAGE_NAME|" "$DEPLOYMENT_FILE"
+      
+              echo "After update:"
+              cat "$DEPLOYMENT_FILE"
+            else
+              echo "Deployment file not found: $DEPLOYMENT_FILE"
+            fi
+          done
+
       # Step 4: Commit updated manifests
       - name: Commit updated manifests
         run: |
