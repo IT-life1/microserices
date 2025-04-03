@@ -51,6 +51,17 @@ jobs:
             fi
           done
 
+      - name: Debug File Paths
+        run: |
+          for service in auth-service gateway-service converter-service notification-service; do
+            DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
+            if [ -f "$DEPLOYMENT_FILE" ]; then
+              echo "File found: $DEPLOYMENT_FILE"
+            else
+              echo "File not found: $DEPLOYMENT_FILE"
+            fi
+          done
+
       # Step 4: Commit updated manifests
       - name: Commit updated manifests
         run: |
