@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: converter
-          image: amozgov/converter
+          image: amozgov/converter-service:16daae12376f6da8212efec25e50b91cc351dc08
           ports:
             - containerPort: 5000 # Add the port if your app listens on one
           envFrom:
