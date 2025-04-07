@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: auth
-          image: amozgov/auth-service:16daae12376f6da8212efec25e50b91cc351dc08
+          image: amozgov/auth-service:97da856199747765278e90c1bfc51b672605f217
           ports:
             - containerPort: 5000
           envFrom:
