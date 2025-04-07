@@ -1,9 +1,13 @@
 name: Build, Push, and Update Kubernetes Manifests
 
 on:
-  push:
+  pull_request:
     branches:
-      - main # Trigger the workflow on pushes to the main branch
+      - main # Trigger the workflow on PRs targeting the main branch
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   build-push-update:
@@ -13,6 +17,8 @@ jobs:
       # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }} # Check out the branch from which the PR was created
 
       # Step 2: Log in to Docker Hub
       - name: Log in to Docker Hub
@@ -51,35 +57,6 @@ jobs:
             fi
           done
 
-      - name: Debug File Paths
-        run: |
-          for service in auth-service gateway-service converter-service notification-service; do
-            DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
-            if [ -f "$DEPLOYMENT_FILE" ]; then
-              echo "File found: $DEPLOYMENT_FILE"
-            else
-              echo "File not found: $DEPLOYMENT_FILE"
-            fi
-          done
-
-      - name: Update deployment.yaml
-        run: |
-          for service in auth-service gateway-service converter-service notification-service; do
-            DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
-            if [ -f "$DEPLOYMENT_FILE" ]; then
-              echo "Before update:"
-              cat "$DEPLOYMENT_FILE"
-      
-              IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/$service:${{ github.sha }}"
-              sed -i "s|image: .*|image: $IMAGE_NAME|" "$DEPLOYMENT_FILE"
-      
-              echo "After update:"
-              cat "$DEPLOYMENT_FILE"
-            else
-              echo "Deployment file not found: $DEPLOYMENT_FILE"
-            fi
-          done
-
       # Step 4: Commit updated manifests
       - name: Commit updated manifests
         run: |
@@ -90,5 +67,19 @@ jobs:
           git add -u
 
           # Commit changes if there are any
-          git commit -m "Update deployment manifests with new image tags"
-          git push https://${{ github.USERNAME }}:${{ secrets.TOKEN }}@github.com/IT-life1/microserices.git main
+          git diff --quiet || git commit -m "Update deployment manifests with new image tags"
+
+          # Push changes to the PR branch
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.head_ref }}
+
+      # Step 5: Debug File Paths
+      - name: Debug File Paths
+        run: |
+          for service in auth-service gateway-service converter-service notification-service; do
+            DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
+            if [ -f "$DEPLOYMENT_FILE" ]; then
+              echo "File found: $DEPLOYMENT_FILE"
+            else
+              echo "File not found: $DEPLOYMENT_FILE"
+            fi
+          done
