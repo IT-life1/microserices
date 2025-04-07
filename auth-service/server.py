@@ -3,7 +3,6 @@ import datetime
 import os
 import psycopg2
 from flask import Flask, request
-import bcrypt
 import logging
 
 # Настройка логирования
@@ -63,8 +62,8 @@ def login():
         if not user_row:
             return 'User not found', 401
 
-        email, password_hash = user_row
-        if not bcrypt.checkpw(auth.password.encode('utf-8'), password_hash.encode('utf-8')):
+        email, stored_password = user_row
+        if stored_password != auth.password:
             return 'Could not verify', 401
 
         return CreateJWT(email, JWT_SECRET, True), 200
