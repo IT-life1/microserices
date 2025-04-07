@@ -1,3 +1,4 @@
+psycopg2-binary==2.9.5
 astroid==2.12.13
 bcrypt==4.0.1
 cffi==1.15.1

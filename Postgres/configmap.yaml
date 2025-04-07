@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-init-sql
+  name: init-scripts-configmap
   labels:
     app: auth-app
 data:

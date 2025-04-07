@@ -15,6 +15,12 @@ RUN pip install --no-cache-dir --requirement /app/requirements.txt
 # Stage 2: Final stage
 FROM python:3.10-slim-bullseye
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends --no-install-suggests \
+    libpq5 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN adduser --disabled-password --gecos "" appuser
 
 WORKDIR /app
