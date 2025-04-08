@@ -41,7 +41,7 @@ jobs:
             fi
 
             # Build the Docker image with the GitHub SHA as the tag
-            IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/$service:${{ github.sha }}"
+            IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/$service:${service}-${{ github.sha }}"
             docker build $GITHUB_WORKSPACE/$service -t $IMAGE_NAME
 
             # Push the image to Docker Hub
