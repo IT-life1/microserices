@@ -87,7 +87,7 @@ def validate():
 
     encoded_jwt = encoded_jwt.split(' ')[1]
     try:
-        decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+        decoded_jwt = jwt.decode(str(encoded_jwt), str(JWT_SECRET), algorithms=["HS256"])
         return decoded_jwt, 200
     except jwt.ExpiredSignatureError:
         return 'Token expired', 401
