@@ -14,33 +14,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install Docker
-      - name: Install Docker
+      - name: Verify Docker
         run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io
+          docker --version
           sudo systemctl start docker
           sudo chmod 666 /var/run/docker.sock
 
-      # Step 3: Install kubectl
-      - name: Install kubectl
+      - name: Verify kubectl
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
 
-      # Step 4: Install Kind
       - name: Install Kind
         run: |
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 
-      # Step 5: Create a multi-node Kind cluster
       - name: Create Kind cluster with 3 nodes
         run: |
           cat <<EOF | kind create cluster --name my-cluster --config=-
@@ -54,23 +46,19 @@ jobs:
           EOF
           kubectl cluster-info
 
-      # Step 6: Install ArgoCD
       - name: Install ArgoCD
         run: |
           kubectl create namespace argocd
           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-      # Step 7: Wait for ArgoCD to be ready
       - name: Wait for ArgoCD to be ready
         run: |
           kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
 
-      # Step 8: Deploy PostgreSQL app via ArgoCD
       - name: Deploy PostgreSQL app via ArgoCD
         run: |
           kubectl apply -f ./argocd/argocd-app.yaml
 
-      # Step 9: Verify PostgreSQL connection
       - name: Verify PostgreSQL connection
         run: |
           POD_NAME=$(kubectl get pods -l app=auth-app -o jsonpath="{.items[0].metadata.name}")
