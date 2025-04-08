@@ -69,7 +69,7 @@ def login():
         if stored_password != auth.password:
             return 'Could not verify', 401
         logger.info(f"Creating token")
-        return CreateJWT(email, JWT_SECRET, True), 200
+        return CreateJWT(email, JWT_SECRET, str(True)), 200
     except Exception as e:
         logger.error(f"Error during login: {e}")
         return 'Internal server error', 500
