@@ -53,19 +53,22 @@ def login():
         return 'Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'}
 
     try:
+        logger.info(f"Connecting to bd")
         conn = get_db_connection()
         cur = conn.cursor()
         query = f"SELECT email, password FROM {auth_table_name} WHERE email = %s"
+        logger.info(f"Executing query: {query}")
         cur.execute(query, (auth.username,))
         user_row = cur.fetchone()
-
+        logger.info(f"Ending executing query: {query}")
+        logger.info(f"Checking user_row")
         if not user_row:
             return 'User not found', 401
 
         email, stored_password = user_row
         if stored_password != auth.password:
             return 'Could not verify', 401
-
+        logger.info(f"Creating token")
         return CreateJWT(email, JWT_SECRET, True), 200
     except Exception as e:
         logger.error(f"Error during login: {e}")
