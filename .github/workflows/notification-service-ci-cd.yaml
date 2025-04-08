@@ -3,7 +3,7 @@ name: Notification Service CI/CD
 on:
   pull_request:
     branches:
-      - main
+      - 'notification-service/**'
     types:
       - opened
       - synchronize
