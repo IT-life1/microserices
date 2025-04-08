@@ -46,6 +46,7 @@ jobs:
 
             # Push the image to Docker Hub
             docker push $IMAGE_NAME
+            echo "$IMAGE_NAME was pushed"
 
             # Update the deployment.yaml file with the new image name
             DEPLOYMENT_FILE="$GITHUB_WORKSPACE/$service/manifest/deployment.yaml"
