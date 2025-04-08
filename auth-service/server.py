@@ -32,7 +32,7 @@ def get_db_connection():
 def CreateJWT(username, secret, authz):
     return jwt.encode(
         {
-            "username": username,
+            "username": str(username),
             "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
             "iat": datetime.datetime.now(tz=datetime.timezone.utc),
             "admin": authz,
