@@ -32,12 +32,12 @@ def get_db_connection():
 def CreateJWT(username, secret, authz):
     return jwt.encode(
         {
-            "username": str(username),
+            "username": str(username),  # Преобразуем в строку
             "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
             "iat": datetime.datetime.now(tz=datetime.timezone.utc),
-            "admin": authz,
+            "admin": "true" if authz else "false",  # Преобразуем в строку 'true' или 'false'
         },
-        secret,
+        str(secret),  # Гарантируем, что secret — это строка
         algorithm="HS256",
     )
 
@@ -69,7 +69,7 @@ def login():
         if stored_password != auth.password:
             return 'Could not verify', 401
         logger.info(f"Creating token")
-        return CreateJWT(email, JWT_SECRET, str(True)), 200
+        return CreateJWT(email, JWT_SECRET, True), 200
     except Exception as e:
         logger.error(f"Error during login: {e}")
         return 'Internal server error', 500
