@@ -3,7 +3,6 @@ import datetime
 import os
 import psycopg2
 from flask import Flask, request
-import bcrypt
 import logging
 
 # Настройка логирования
@@ -33,12 +32,12 @@ def get_db_connection():
 def CreateJWT(username, secret, authz):
     return jwt.encode(
         {
-            "username": username,
+            "username": str(username),  # Преобразуем в строку
             "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
             "iat": datetime.datetime.now(tz=datetime.timezone.utc),
-            "admin": authz,
+            "admin": "true" if authz else "false",  # Преобразуем в строку 'true' или 'false'
         },
-        secret,
+        str(secret),  # Гарантируем, что secret — это строка
         algorithm="HS256",
     )
 
@@ -54,19 +53,22 @@ def login():
         return 'Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'}
 
     try:
+        logger.info(f"Connecting to bd")
         conn = get_db_connection()
         cur = conn.cursor()
         query = f"SELECT email, password FROM {auth_table_name} WHERE email = %s"
+        logger.info(f"Executing query: {query}")
         cur.execute(query, (auth.username,))
         user_row = cur.fetchone()
-
+        logger.info(f"Ending executing query: {query}")
+        logger.info(f"Checking user_row")
         if not user_row:
             return 'User not found', 401
 
-        email, password_hash = user_row
-        if not bcrypt.checkpw(auth.password.encode('utf-8'), password_hash.encode('utf-8')):
+        email, stored_password = user_row
+        if stored_password != auth.password:
             return 'Could not verify', 401
-
+        logger.info(f"Creating token")
         return CreateJWT(email, JWT_SECRET, True), 200
     except Exception as e:
         logger.error(f"Error during login: {e}")
@@ -85,7 +87,7 @@ def validate():
 
     encoded_jwt = encoded_jwt.split(' ')[1]
     try:
-        decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+        decoded_jwt = jwt.decode(str(encoded_jwt), str(JWT_SECRET), algorithms=["HS256"])
         return decoded_jwt, 200
     except jwt.ExpiredSignatureError:
         return 'Token expired', 401

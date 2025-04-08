@@ -1,0 +1,41 @@
+name: Docker Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: "The name of the service to build and push"
+        required: true
+        type: string
+      branch:
+        description: "The branch or ref to checkout"
+        required: true
+        type: string
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+
+      # Step 2: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      # Step 3: Build and push Docker image
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/${{ inputs.service }}:${{ github.sha }}"
+          echo "Building image: $IMAGE_NAME"
+          docker build ./${{ inputs.service }} -t $IMAGE_NAME || { echo "Failed to build image"; exit 1; }
+
+          echo "Pushing image: $IMAGE_NAME"
+          docker push $IMAGE_NAME || { echo "Failed to push image"; exit 1; }
