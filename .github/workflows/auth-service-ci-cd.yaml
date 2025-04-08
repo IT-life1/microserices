@@ -3,7 +3,7 @@ name: Auth Service CI/CD
 on:
   pull_request:
     branches:
-      - main
+      - 'auth-service/**'
     types:
       - opened
       - synchronize
