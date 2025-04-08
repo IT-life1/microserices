@@ -67,24 +67,41 @@ jobs:
         run: |
           kubectl apply -f ./argocd/argocd-app.yaml
 
-      # Step 9: Wait for auth-app pod to be ready
+      # Step 9: Check ArgoCD app status
+      - name: Check ArgoCD app status
+        run: |
+          kubectl get application postgres-app -n argocd -o yaml
+
+      # Step 10: Debug ArgoCD logs
+      - name: Debug ArgoCD logs
+        run: |
+          kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller
+
+      # Step 11: Debug pod status
+      - name: Debug pod status
+        run: |
+          echo "Listing all pods:"
+          kubectl get pods --all-namespaces
+          echo "Cluster events:"
+          kubectl get events
+
+      # Step 12: Wait for auth-app pod to be ready
       - name: Wait for auth-app pod to be ready
         run: |
           kubectl wait --for=condition=Ready pod -l app=auth-app --timeout=300s
 
-      # Step 10: Verify PostgreSQL connection
+      # Step 13: Debug init container logs
+      - name: Debug init container logs
+        run: |
+          POD_NAME=$(kubectl get pods -l app=auth-app -o jsonpath="{.items[0].metadata.name}" || echo "")
+          if [ -n "$POD_NAME" ]; then
+            kubectl logs $POD_NAME -c init-db
+          else
+            echo "No pod found with label app=auth-app"
+          fi
+
+      # Step 14: Verify PostgreSQL connection
       - name: Verify PostgreSQL connection
         run: |
           POD_NAME=$(kubectl get pods -l app=auth-app -o jsonpath="{.items[0].metadata.name}")
           kubectl exec -it $POD_NAME -- sh -c "psql -h localhost -U alex -d authdb"
-
-      # Step 11: Debug if pods are not found
-      - name: Debug if pods are not found
-        if: failure()
-        run: |
-          echo "Listing all pods for debugging:"
-          kubectl get pods --all-namespaces
-          echo "Describing auth-app deployment:"
-          kubectl describe deployment auth-app || echo "No deployment found"
-          echo "Cluster events:"
-          kubectl get events
