@@ -3,7 +3,7 @@ name: Converter Service CI/CD
 on:
   pull_request:
     branches:
-      - main
+      - 'converter-service/**'
     types:
       - opened
       - synchronize
