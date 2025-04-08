@@ -1,0 +1,61 @@
+name: Notification Service CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  build-push-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      # Step 2: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      # Step 3: Build and push Docker image
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/notification-service:${{ github.sha }}"
+          echo "Building image: $IMAGE_NAME"
+          docker build ./notification-service -t $IMAGE_NAME || { echo "Failed to build image"; exit 1; }
+
+          echo "Pushing image: $IMAGE_NAME"
+          docker push $IMAGE_NAME || { echo "Failed to push image"; exit 1; }
+
+      # Step 4: Update deployment manifest
+      - name: Update deployment manifest
+        run: |
+          DEPLOYMENT_FILE="./notification-service/manifest/deployment.yaml"
+          if [ -f "$DEPLOYMENT_FILE" ]; then
+            echo "Updating $DEPLOYMENT_FILE with image: $IMAGE_NAME"
+            sed -i "s|image: .*|image: $IMAGE_NAME|" "$DEPLOYMENT_FILE" || { echo "Failed to update manifest"; exit 1; }
+          else
+            echo "Deployment file not found: $DEPLOYMENT_FILE"
+            exit 1
+          fi
+
+      # Step 5: Commit updated manifests
+      - name: Commit updated manifests
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          git add ./notification-service/manifest/deployment.yaml
+          git diff --quiet || git commit -m "Update notification-service deployment manifest with new image tag"
+
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.head_ref }}
