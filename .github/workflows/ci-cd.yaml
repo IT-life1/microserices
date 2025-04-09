@@ -1,4 +1,4 @@
-name: Kind Cluster and ArgoCD Deployment
+name: Kind Cluster and PostgreSQL Deployment
 
 on:
   pull_request:
@@ -51,57 +51,35 @@ jobs:
           EOF
           kubectl cluster-info
 
-      # Step 6: Install ArgoCD
-      - name: Install ArgoCD
+      # Step 6: Deploy PostgreSQL from manifests
+      - name: Deploy PostgreSQL
         run: |
-          kubectl create namespace argocd
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          kubectl apply -f Postgres/ -n default
 
-      # Step 7: Wait for ArgoCD to be ready
-      - name: Wait for ArgoCD to be ready
-        run: |
-          kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
-
-      # Step 8: Deploy PostgreSQL app via ArgoCD
-      - name: Deploy PostgreSQL app via ArgoCD
-        run: |
-          kubectl apply -f ./argocd/argocd-app.yaml
-
-      # Step 9: Check ArgoCD app status
-      - name: Check ArgoCD app status
-        run: |
-          kubectl get application postgres-app -n argocd -o yaml
-
-      # Step 10: Debug ArgoCD logs
-      - name: Debug ArgoCD logs
-        run: |
-          kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller
-
-      # Step 11: Debug pod status
-      - name: Debug pod status
-        run: |
-          echo "Listing all pods:"
-          kubectl get pods --all-namespaces
-          echo "Cluster events:"
-          kubectl get events
-
-      # Step 12: Wait for auth-app pod to be ready
-      - name: Wait for auth-app pod to be ready
+      # Step 7: Wait for PostgreSQL pod to be ready
+      - name: Wait for PostgreSQL
         run: |
           kubectl wait --for=condition=Ready pod -l app=auth-app --timeout=300s
 
-      # Step 13: Debug init container logs
-      - name: Debug init container logs
-        run: |
-          POD_NAME=$(kubectl get pods -l app=auth-app -o jsonpath="{.items[0].metadata.name}" || echo "")
-          if [ -n "$POD_NAME" ]; then
-            kubectl logs $POD_NAME -c init-db
-          else
-            echo "No pod found with label app=auth-app"
-          fi
-
-      # Step 14: Verify PostgreSQL connection
+      # Step 10: Verify PostgreSQL connection
       - name: Verify PostgreSQL connection
         run: |
-          POD_NAME=$(kubectl get pods -l app=auth-app -o jsonpath="{.items[0].metadata.name}")
-          kubectl exec -it $POD_NAME -- sh -c "psql -h localhost -U alex -d authdb"
+          POSTGRES_POD=$(kubectl get pod -l app=postgres -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec -it $POSTGRES_POD -- psql -U alex -d authdb -c "SELECT 'Connected!';"
+
+      # Step 11: Debugging steps
+      - name: Show cluster resources
+        run: |
+          echo "Pods status:"
+          kubectl get pods --all-namespaces
+          echo "Persistent Volumes:"
+          kubectl get pv
+          echo "Persistent Volume Claims:"
+          kubectl get pvc
+          echo "Services:"
+          kubectl get svc
+
+      - name: Check PostgreSQL logs
+        run: |
+          POSTGRES_POD=$(kubectl get pod -l app=postgres -o jsonpath="{.items[0].metadata.name}")
+          kubectl logs $POSTGRES_POD
