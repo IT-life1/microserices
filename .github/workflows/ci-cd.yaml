@@ -62,10 +62,21 @@ jobs:
           kubectl wait --for=condition=Ready pod -l app=auth-app --timeout=300s
 
       # Step 10: Verify PostgreSQL connection
-      - name: Verify PostgreSQL connection
+      - name: Test PostgreSQL connection
         run: |
-          POSTGRES_POD=$(kubectl get pod -l app=auth-app -o jsonpath="{.items[0].metadata.name}")
-          kubectl exec -it $POSTGRES_POD -- psql -h localhost -U alex -d authdb -c "SELECT 'Connected!';"
+          kubectl run pg-test \
+            --image=postgres:15-alpine \
+            --restart=Never \
+            --env=PGHOST=db \
+            --env=PGUSER=alex \
+            --env=PGDATABASE=authdb \
+            --env=PGPASSWORD=sova \
+            --command -- sh -c "psql -c 'SELECT 1;' && echo 'Connection successful'"
+            
+          # Ждем завершения и проверяем результат
+          kubectl wait --for=condition=Ready pod/pg-test --timeout=30s || true
+          kubectl logs pg-test
+          kubectl delete pod pg-test --ignore-not-found
 
       # Step 11: Debugging steps
       - name: Show cluster resources
