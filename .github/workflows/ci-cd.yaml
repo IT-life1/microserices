@@ -61,22 +61,23 @@ jobs:
         run: |
           kubectl wait --for=condition=Ready pod -l app=auth-app --timeout=300s
 
-      # Step 10: Verify PostgreSQL connection
-      - name: Test PostgreSQL connection
+      # Step 8: Install Python dependencies
+      - name: Install Python dependencies
         run: |
-          kubectl run pg-test \
-            --image=postgres:15-alpine \
-            --restart=Never \
-            --env=PGHOST=db \
-            --env=PGUSER=alex \
-            --env=PGDATABASE=authdb \
-            --env=PGPASSWORD=sova \
-            --command -- sh -c "psql -c 'SELECT 1;' && echo 'Connection successful'"
-            
-          # Ждем завершения и проверяем результат
-          kubectl wait --for=condition=Ready pod/pg-test --timeout=30s || true
-          kubectl logs pg-test
-          kubectl delete pod pg-test --ignore-not-found
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+          pip3 install psycopg2-binary
+
+      # Step 9: Export kubeconfig for Kind cluster
+      - name: Export kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          kind export kubeconfig --name my-cluster
+
+      # Step 10: Test PostgreSQL connection with Python
+      - name: Test PostgreSQL connection with Python
+        run: |
+          python test_postgresql_connection.py
 
       # Step 11: Debugging steps
       - name: Show cluster resources
