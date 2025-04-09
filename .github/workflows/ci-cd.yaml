@@ -64,7 +64,7 @@ jobs:
       # Step 10: Verify PostgreSQL connection
       - name: Verify PostgreSQL connection
         run: |
-          POSTGRES_POD=$(kubectl get pod -l app=postgres -o jsonpath="{.items[0].metadata.name}")
+          POSTGRES_POD=$(kubectl get pod -l app=auth-app -o jsonpath="{.items[0].metadata.name}")
           kubectl exec -it $POSTGRES_POD -- psql -U alex -d authdb -c "SELECT 'Connected!';"
 
       # Step 11: Debugging steps
