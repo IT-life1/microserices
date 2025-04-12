@@ -26,7 +26,7 @@ def connect_to_rabbitmq(retries=5, delay=2):
     for attempt in range(retries):
         try:
             logger.info(f"Attempting to connect to RabbitMQ (attempt {attempt + 1}/{retries})...")
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq", heartbeat=60))
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq", heartbeat=600, blocked_connection_timeout=300))
             channel = connection.channel()
             logger.info("Successfully connected to RabbitMQ.")
             return connection, channel
