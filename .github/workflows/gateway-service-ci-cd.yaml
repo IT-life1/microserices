@@ -15,7 +15,7 @@ jobs:
   build-push:
     uses: ./.github/workflows/docker-build-push.yaml
     with:
-      service: converter-service
+      service: gateway-service
       branch: ${{ github.head_ref }}
     secrets:
       DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
