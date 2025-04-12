@@ -22,8 +22,27 @@ mongo_mp3 = PyMongo(server, uri=os.environ.get('MONGODB_MP3S_URI'))
 fs_videos = gridfs.GridFS(mongo_video.db)
 fs_mp3s = gridfs.GridFS(mongo_mp3.db)
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq", heartbeat=60))
-channel = connection.channel()
+def connect_to_rabbitmq(retries=5, delay=2):
+    for attempt in range(retries):
+        try:
+            logger.info(f"Attempting to connect to RabbitMQ (attempt {attempt + 1}/{retries})...")
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq", heartbeat=60))
+            channel = connection.channel()
+            logger.info("Successfully connected to RabbitMQ.")
+            return connection, channel
+        except pika.exceptions.AMQPConnectionError as conn_err:
+            logger.error(f"Failed to connect to RabbitMQ: {conn_err}")
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                logger.error("Max retries reached. Unable to connect to RabbitMQ.")
+                raise
+    return None, None
+
+connection, channel = connect_to_rabbitmq()
+if not connection or not channel:
+    logger.error("Failed to establish RabbitMQ connection. Exiting...")
+    raise Exception("RabbitMQ connection failed")
 
 def authenticate_user(request):
     access, err = validate.token(request)
