@@ -19,6 +19,11 @@ def upload_to_gridfs(fs, file):
 
 def publish_to_rabbitmq(channel, message):
     try:
+        # Проверяем, что канал активен
+        if channel.is_closed:
+            raise pika.exceptions.ChannelClosed("RabbitMQ channel is closed")
+
+        logger.info("Publishing message to RabbitMQ...")
         channel.basic_publish(
             exchange="",
             routing_key="video",
@@ -27,12 +32,16 @@ def publish_to_rabbitmq(channel, message):
                 delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
             ),
         )
+        logger.info("Message published to RabbitMQ successfully.")
         return None
     except pika.exceptions.AMQPConnectionError as conn_err:
         logger.error(f"RabbitMQ connection error: {conn_err}")
         return "internal server error, rabbitmq connection issue"
+    except pika.exceptions.ChannelClosed as ch_err:
+        logger.error(f"RabbitMQ channel closed: {ch_err}")
+        return "internal server error, rabbitmq channel closed"
     except Exception as err:
-        logger.error(f"RabbitMQ publish error: {err}")
+        logger.error(f"Unexpected RabbitMQ publish error: {err}")
         return f"internal server error, rabbitmq issue: {err}"
 
 def upload(f, fs, channel, access):
@@ -55,6 +64,7 @@ def upload(f, fs, channel, access):
     error = publish_to_rabbitmq(channel, message)
     if error:
         try:
+            logger.error(f"Failed to publish message to RabbitMQ. Deleting file from GridFS with ID: {fid}")
             fs.delete(fid)
         except Exception as delete_err:
             logger.error(f"Failed to delete file from GridFS: {delete_err}")
