@@ -18,6 +18,11 @@ jobs:
 
     steps:
       # Step 1: Checkout the repository
+      - name: Verify Secrets
+        run: |
+          echo "DOCKER_HUB_USERNAME exists"
+          echo "DOCKER_HUB_TOKEN exists"
+      
       - name: Checkout code
         uses: actions/checkout@v3
         with:
