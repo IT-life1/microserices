@@ -84,7 +84,11 @@ def upload():
             err = upload_file(f, fs_videos, channel, access)
 
             if err:
-                return err
+                # Преобразуем результат в корректный HTTP-ответ
+                if isinstance(err, tuple):
+                    return err[0], err[1]  # Возвращаем сообщение и код статуса
+                else:
+                    return err, 500  # Возвращаем ошибку с кодом 500
 
         return "success!", 200
     else:
