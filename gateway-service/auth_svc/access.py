@@ -17,7 +17,7 @@ def authenticate_user(basic_auth):
 
     try:
         response = requests.post(
-            f"http://{auth_svc_address}/login",
+            f"http://auth:5000/login",
             auth=basic_auth,
             timeout=5
         )
