@@ -11,6 +11,11 @@ on:
         description: "The branch or ref to checkout"
         required: true
         type: string
+    secrets:
+      DOCKER_HUB_USERNAME:
+        required: true
+      DOCKER_HUB_TOKEN:
+        required: true
 
 jobs:
   build-push:

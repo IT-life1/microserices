@@ -90,8 +90,3 @@ jobs:
           kubectl get pvc
           echo "Services:"
           kubectl get svc
-
-      - name: Check PostgreSQL logs
-        run: |
-          POSTGRES_POD=$(kubectl get pod -l app=postgres -o jsonpath="{.items[0].metadata.name}")
-          kubectl logs $POSTGRES_POD
