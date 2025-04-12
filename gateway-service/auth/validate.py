@@ -17,7 +17,7 @@ def validate_token(token: str):
 
     try:
         response = requests.post(
-            f"http://{auth_svc_address}/validate",
+            f"http://auth:5000/validate",
             headers={"Authorization": token},
             timeout=5
         )
