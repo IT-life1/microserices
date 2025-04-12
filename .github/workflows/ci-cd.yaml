@@ -1,0 +1,92 @@
+name: Kind Cluster and PostgreSQL Deployment
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  setup-kind-cluster:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Verify Docker
+      - name: Verify Docker
+        run: |
+          docker --version
+          sudo systemctl start docker
+          sudo chmod 666 /var/run/docker.sock
+
+      # Step 3: Verify kubectl
+      - name: Verify kubectl
+        run: |
+          kubectl version --client
+
+      # Step 4: Install Kind
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      # Step 5: Create a multi-node Kind cluster
+      - name: Create Kind cluster with 3 nodes
+        run: |
+          cat <<EOF | kind create cluster --name my-cluster --config=-
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+            - role: control-plane
+            - role: worker
+            - role: worker
+            - role: worker
+          EOF
+          kubectl cluster-info
+
+      # Step 6: Deploy PostgreSQL from manifests
+      - name: Deploy PostgreSQL
+        run: |
+          kubectl apply -f Postgres/ -n default
+
+      # Step 7: Wait for PostgreSQL pod to be ready
+      - name: Wait for PostgreSQL
+        run: |
+          kubectl wait --for=condition=Ready pod -l app=auth-app --timeout=300s
+
+      # Step 8: Install Python dependencies
+      - name: Install Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+          pip3 install psycopg2-binary
+
+      # Step 9: Export kubeconfig for Kind cluster
+      - name: Export kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          kind export kubeconfig --name my-cluster
+
+      # Step 10: Test PostgreSQL connection with Python
+      - name: Test PostgreSQL connection with Python
+        run: |
+          python test_postgresql_connection.py
+
+      # Step 11: Debugging steps
+      - name: Show cluster resources
+        run: |
+          echo "Pods status:"
+          kubectl get pods --all-namespaces
+          echo "Persistent Volumes:"
+          kubectl get pv
+          echo "Persistent Volume Claims:"
+          kubectl get pvc
+          echo "Services:"
+          kubectl get svc

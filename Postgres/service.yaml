@@ -11,5 +11,4 @@ spec:
   - port: 5432
     targetPort: 5432
   selector:
-    name: postgres-pod
     app: auth-app
