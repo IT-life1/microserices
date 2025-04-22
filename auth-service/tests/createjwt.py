@@ -1,6 +1,6 @@
 import unittest
 import jwt
-# from  import CreateJWT  # Замените на имя вашего модуля
+from server import CreateJWT
 
 class TestCreateJWT(unittest.TestCase):
     def test_create_jwt(self):
@@ -18,7 +18,7 @@ class TestCreateJWT(unittest.TestCase):
 
     def test_create_jwt_with_false_authz(self):
         username = "test_user"
-        secret = "supersecret"
+        secret = "sarcasm"
         authz = False
 
         token = CreateJWT(username, secret, authz)
