@@ -25,7 +25,8 @@ fs_mp3s = gridfs.GridFS(mongo_mp3.db)
 def connect_to_rabbitmq():
     return pika.ConnectionParameters(
         host="rabbitmq",
-        heartbeat=60,
+        heartbeat=600,
+        blocked_connection_timeout=300,
         connection_attempts=5,
         retry_delay=2
     )
