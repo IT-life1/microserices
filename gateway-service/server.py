@@ -1,6 +1,7 @@
 import os
 import gridfs
 import pika
+import json
 from flask import Flask, request, send_file
 from flask_pymongo import PyMongo
 from auth import validate
@@ -42,9 +43,22 @@ def handle_upload():
     if err:
         return err, 401
 
-    # Проверка прав
-    if not access_data.get("admin"):
-        return "not authorized", 401
+    try:
+        # Преобразуем access_data в словарь, если это JSON строка
+        if isinstance(access_data, str):
+            access_dict = json.loads(access_data)
+        else:
+            access_dict = access_data
+        
+        # Проверка прав
+        if not access_dict.get("admin"):
+            return "not authorized", 401
+
+    except json.JSONDecodeError:
+        return "invalid access token format", 401
+    except Exception as e:
+        logger.error(f"Error processing access data: {e}")
+        return "internal server error", 500
 
     # Проверка файлов
     if len(request.files) != 1:
@@ -65,7 +79,7 @@ def handle_upload():
         file=file,
         fs=fs_videos,
         rabbitmq_params=get_rabbitmq_params(),
-        access=access_data
+        access=access_dict  # Используем преобразованный словарь
     )
     
     return result, status_code
@@ -77,8 +91,20 @@ def download():
     if err:
         return err, 401
 
-    if not access_data.get("admin"):
-        return "not authorized", 401
+    try:
+        if isinstance(access_data, str):
+            access_dict = json.loads(access_data)
+        else:
+            access_dict = access_data
+        
+        if not access_dict.get("admin"):
+            return "not authorized", 401
+
+    except json.JSONDecodeError:
+        return "invalid access token format", 401
+    except Exception as e:
+        logger.error(f"Error processing access data: {e}")
+        return "internal server error", 500
 
     fid_string = request.args.get("fid")
     if not fid_string:
