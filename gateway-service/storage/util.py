@@ -27,6 +27,10 @@ def ensure_channel_open(connection):
     Проверяет, открыт ли канал, и создает новый, если текущий закрыт.
     """
     try:
+        if connection.is_closed:
+            logger.warning("RabbitMQ connection is closed, attempting to reconnect...")
+            connection.connect()
+        
         channel = connection.channel()
         logger.info("RabbitMQ channel successfully opened.")
         return channel, None
@@ -54,6 +58,7 @@ def publish_to_rabbitmq(connection, message):
             ),
         )
         logger.info(f"Message successfully published to RabbitMQ: {message}")
+        channel.close()  # Закрываем канал после использования
         return None
     except pika.exceptions.AMQPConnectionError as conn_err:
         logger.error(f"RabbitMQ connection error: {conn_err}")
@@ -65,7 +70,7 @@ def publish_to_rabbitmq(connection, message):
         logger.error(f"RabbitMQ publish error: {err}")
         return f"internal server error, rabbitmq issue: {err}"
 
-def upload(f, fs, connection, access):
+def upload(f, fs, rabbitmq_connection, access):
     """
     Обрабатывает загрузку файла, публикацию в RabbitMQ и очистку при ошибках.
     """
@@ -97,7 +102,7 @@ def upload(f, fs, connection, access):
     logger.info(f"Prepared message for RabbitMQ: {message}")
 
     # Публикация сообщения в RabbitMQ
-    error = publish_to_rabbitmq(connection, message)
+    error = publish_to_rabbitmq(rabbitmq_connection, message)
     if error:
         logger.error(f"Failed to publish message to RabbitMQ: {error}")
 
