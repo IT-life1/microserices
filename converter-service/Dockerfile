@@ -1,4 +1,4 @@
-# Stage 1: Build stage
+# Stage 1: Build stageу
 FROM python:3.10-slim-bullseye AS builder
 
 RUN apt-get update && \
