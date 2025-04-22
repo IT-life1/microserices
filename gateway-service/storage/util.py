@@ -64,48 +64,63 @@ def publish_to_rabbitmq(channel, message):
 
 def upload(f, fs, rabbitmq_params, access):
     """
-    Обрабатывает загрузку файла, публикацию в RabbitMQ и очистку при ошибках.
+    Упрощенная и надежная версия функции upload
     """
-    logger.info("Starting file upload process...")
-
-    if not f:
-        logger.warning("No file provided for upload.")
-        return "missing file", 400
-
-    if not access or "username" not in access:
-        logger.warning("Missing or incomplete user credentials.")
-        return "missing user credentials", 400
-
-    # Загрузка файла в GridFS
-    fid, error = upload_to_gridfs(fs, f)
-    if error:
-        return error, 500
-
-    # Подготовка сообщения
-    message = {
-        "video_fid": str(fid),
-        "mp3_fid": None,
-        "username": access["username"],
-    }
-    logger.info(f"Prepared message for RabbitMQ: {message}")
-
-    # Создаем канал и публикуем сообщение
-    channel, error = create_rabbitmq_channel(rabbitmq_params)
-    if error:
-        fs.delete(fid)
-        return error, 500
-
-    error = publish_to_rabbitmq(channel, message)
-    
-    # Закрываем соединение в любом случае
     try:
-        channel.close()
-        channel.connection.close()
-    except Exception as close_err:
-        logger.error(f"Error closing RabbitMQ connection: {close_err}")
+        # Проверка входных данных
+        if not f or not hasattr(f, 'filename'):
+            return "invalid file", 400
+        
+        if not access or not isinstance(access, dict):
+            return "invalid access data", 400
 
-    if error:
-        fs.delete(fid)
-        return error, 500
+        # Загрузка в GridFS
+        try:
+            fid = fs.put(f)
+            logger.info(f"Uploaded file to GridFS: {fid}")
+        except Exception as gridfs_err:
+            logger.error(f"GridFS upload failed: {gridfs_err}")
+            return "gridfs upload error", 500
 
-    return None, 200
+        # Подготовка сообщения
+        message = {
+            "video_fid": str(fid),
+            "mp3_fid": None,
+            "username": access.get("username", "unknown")
+        }
+
+        # Работа с RabbitMQ
+        try:
+            connection = pika.BlockingConnection(rabbitmq_params)
+            channel = connection.channel()
+            channel.queue_declare(queue='video', durable=True)
+            
+            channel.basic_publish(
+                exchange='',
+                routing_key='video',
+                body=json.dumps(message),
+                properties=pika.BasicProperties(
+                    delivery_mode=2  # persistent
+                )
+            )
+            logger.info("Message published to RabbitMQ")
+            
+            return None, 200
+            
+        except Exception as rabbit_err:
+            logger.error(f"RabbitMQ error: {rabbit_err}")
+            try:
+                fs.delete(fid)
+                logger.info(f"Deleted file {fid} after RabbitMQ failure")
+            except Exception as del_err:
+                logger.error(f"Failed to delete file: {del_err}")
+            
+            return "rabbitmq publish error", 500
+            
+        finally:
+            if 'connection' in locals() and connection.is_open:
+                connection.close()
+                
+    except Exception as global_err:
+        logger.error(f"Unexpected error: {global_err}")
+        return "internal server error", 500
