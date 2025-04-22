@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Добавляем путь к папке auth-service
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest
 import jwt
 from server import CreateJWT
@@ -5,7 +11,7 @@ from server import CreateJWT
 class TestCreateJWT(unittest.TestCase):
     def test_create_jwt(self):
         username = "test_user"
-        secret = "supersecret"
+        secret = "sarcasm"
         authz = True
 
         token = CreateJWT(username, secret, authz)
