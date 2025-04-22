@@ -1,111 +1,97 @@
 import os
 import gridfs
 import pika
-import json
-import logging
 from flask import Flask, request, send_file
 from flask_pymongo import PyMongo
 from auth import validate
 from auth_svc import access
 from storage import util
 from bson.objectid import ObjectId
+import logging
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 server = Flask(__name__)
 
+# Инициализация MongoDB
 mongo_video = PyMongo(server, uri=os.environ.get('MONGODB_VIDEOS_URI'))
 mongo_mp3 = PyMongo(server, uri=os.environ.get('MONGODB_MP3S_URI'))
 
 fs_videos = gridfs.GridFS(mongo_video.db)
 fs_mp3s = gridfs.GridFS(mongo_mp3.db)
 
-def connect_to_rabbitmq():
+def get_rabbitmq_params():
     return pika.ConnectionParameters(
         host="rabbitmq",
         heartbeat=600,
-        blocked_connection_timeout=300,
-        connection_attempts=5,
-        retry_delay=2
+        blocked_connection_timeout=300
     )
-
-def authenticate_user(request):
-    access, err = validate.token(request)
-    if err:
-        logger.warning("Unauthorized access attempt")
-        return None, err
-    return json.loads(access), None
-
-def upload_file(f, fs, channel, access):
-    if not f.filename.lower().endswith(('.mp4', '.avi', '.mov')):
-        return "unsupported file format", 400
-
-    if f.content_length > 100 * 1024 * 1024:  # 100 MB
-        return "file too large", 413
-
-    return util.upload(f, fs, channel, access)
 
 @server.route("/login", methods=["POST"])
 def login():
     token, err = access.login(request)
-
-    if not err:
-        return token
-    else:
-        return err
+    if err:
+        return err, 401
+    return token, 200
 
 @server.route("/upload", methods=["POST"])
-def upload():
-    access, err = authenticate_user(request)
-
+def handle_upload():
+    # Аутентификация
+    access_data, err = validate.token(request)
     if err:
-        return err
+        return err, 401
 
-    if access["admin"]:
-        if len(request.files) != 1:
-            return "exactly 1 file required", 400
-
-        for _, f in request.files.items():
-            err = util.upload(f, fs_videos, connect_to_rabbitmq(), access)
-
-            if err:
-                # Преобразуем результат в корректный HTTP-ответ
-                if isinstance(err, tuple):
-                    return err[0], err[1]  # Возвращаем сообщение и код статуса
-                else:
-                    return err, 500  # Возвращаем ошибку с кодом 500
-
-        return "success!", 200
-    else:
+    # Проверка прав
+    if not access_data.get("admin"):
         return "not authorized", 401
+
+    # Проверка файлов
+    if len(request.files) != 1:
+        return "exactly 1 file required", 400
+
+    file = next(iter(request.files.values()))
+
+    # Проверка типа файла
+    if not file.filename.lower().endswith(('.mp4', '.avi', '.mov')):
+        return "unsupported file format", 400
+
+    # Проверка размера
+    if file.content_length > 100 * 1024 * 1024:  # 100 MB
+        return "file too large", 413
+
+    # Обработка загрузки
+    result, status_code = util.upload(
+        file=file,
+        fs=fs_videos,
+        rabbitmq_params=get_rabbitmq_params(),
+        access=access_data
+    )
+    
+    return result, status_code
 
 @server.route("/download", methods=["GET"])
 def download():
-    access, err = authenticate_user(request)
-
+    # Аутентификация
+    access_data, err = validate.token(request)
     if err:
-        return err
+        return err, 401
 
-    if access["admin"]:
-        fid_string = request.args.get("fid")
+    if not access_data.get("admin"):
+        return "not authorized", 401
 
-        if not fid_string:
-            return "fid is required", 400
+    fid_string = request.args.get("fid")
+    if not fid_string:
+        return "fid is required", 400
 
-        try:
-            out = fs_mp3s.get(ObjectId(fid_string))
-            return send_file(out, download_name=f"{fid_string}.mp3")
-        except gridfs.errors.NoFile:
-            logger.error(f"File with ID {fid_string} not found")
-            return "file not found", 404
-        except Exception as err:
-            logger.error(f"Error downloading file: {err}")
-            return "internal server error", 500
-
-    return "not authorized", 401
-
+    try:
+        out = fs_mp3s.get(ObjectId(fid_string))
+        return send_file(out, download_name=f"{fid_string}.mp3")
+    except gridfs.errors.NoFile:
+        return "file not found", 404
+    except Exception as err:
+        logger.error(f"Download error: {err}")
+        return "internal server error", 500
 
 if __name__ == "__main__":
     server.run(host="0.0.0.0", port=8080)
