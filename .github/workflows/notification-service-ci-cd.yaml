@@ -17,6 +17,9 @@ jobs:
     with:
       service: notification-service
       branch: ${{ github.head_ref }}
+    secrets:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
 
   update-manifests:
     needs: build-push
