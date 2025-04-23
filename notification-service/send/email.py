@@ -20,13 +20,13 @@ def notification(message):
             return "Invalid message format"
 
         mp3_fid = message["mp3_fid"]
-        sender_address = os.getenv("GMAIL_ADDRESS")
-        sender_password = os.getenv("GMAIL_PASSWORD")
+        sender_address = os.getenv("MAIL_RU_ADDRESS")  # Изменено на MAIL_RU_ADDRESS
+        sender_password = os.getenv("MAIL_RU_PASSWORD")  # Изменено на MAIL_RU_PASSWORD
         receiver_address = message["username"]
 
         # Создание письма
         msg = EmailMessage()
-        msg.set_content(f"mp3 file_id: {mp3_fid} is now ready!")  # Plain text
+        msg.set_content(f"mp3 file_id: {mp3_fid} is now ready!")
         msg.add_alternative(f"""
         <html>
             <body>
@@ -34,21 +34,28 @@ def notification(message):
                 <p>File ID: <strong>{mp3_fid}</strong></p>
             </body>
         </html>
-        """, subtype="html")  # HTML content
+        """, subtype="html")
         msg["Subject"] = "MP3 Download"
         msg["From"] = sender_address
         msg["To"] = receiver_address
 
-        # Отправка письма
-        with smtplib.SMTP("smtp.gmail.com", 587) as session:
-            session.starttls()
+        # Настройки SMTP для mail.ru/inbox.ru
+        smtp_server = "smtp.mail.ru"
+        smtp_port = 465  # Используем SSL порт
+        
+        # Отправка письма через mail.ru
+        with smtplib.SMTP_SSL(smtp_server, smtp_port) as session:
             session.login(sender_address, sender_password)
             session.send_message(msg)
-            logger.info("Mail sent successfully")
+            logger.info(f"Mail sent successfully to {receiver_address}")
 
     except smtplib.SMTPAuthenticationError:
-        logger.error("Failed to authenticate with Gmail. Check your credentials.")
+        logger.error("Failed to authenticate with mail.ru. Check your credentials.")
+        return "SMTP authentication failed"
     except smtplib.SMTPException as e:
         logger.error(f"SMTP error occurred: {e}")
+        return f"SMTP error: {str(e)}"
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
+        return f"Unexpected error: {str(e)}"
+    return None
