@@ -17,14 +17,48 @@ logger = logging.getLogger(__name__)
 def convert_video_to_audio(input_path, output_path):
     """
     Конвертирует видеофайл в аудиофайл с использованием moviepy.
+    Добавлена проверка целостности видеофайла перед конвертацией.
     """
     try:
-        logger.info("Converting video to audio...")
-        audio = moviepy.editor.VideoFileClip(input_path).audio
-        audio.write_audiofile(output_path)
-        logger.info("Audio conversion completed.")
+        # Сначала проверяем, что файл существует и не пустой
+        if not os.path.exists(input_path) or os.path.getsize(input_path) == 0:
+            raise ValueError("Input video file is missing or empty")
+
+        logger.info(f"Starting conversion of {input_path} to {output_path}")
+        
+        # Проверяем, доступен ли ffmpeg
+        if not moviepy.editor.ffmpeg_tools.ffmpeg_installed():
+            raise RuntimeError("FFmpeg is not installed or not found in PATH")
+
+        # Загружаем видео с проверкой
+        try:
+            video = moviepy.editor.VideoFileClip(input_path)
+            if not video.audio:  # Проверяем наличие аудиодорожки
+                raise ValueError("Video file has no audio track")
+        except Exception as load_err:
+            raise ValueError(f"Invalid video file: {str(load_err)}")
+
+        # Конвертируем в аудио
+        audio = video.audio
+        audio.write_audiofile(output_path, verbose=False, logger=None)
+        audio.close()
+        video.close()
+        
+        # Проверяем результат
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            raise RuntimeError("Output audio file was not created properly")
+            
+        logger.info("Audio conversion completed successfully")
+        return True
+        
     except Exception as err:
-        logger.error(f"Failed to convert video to audio: {str(err)}")
+        logger.error(f"Video to audio conversion failed: {str(err)}")
+        # Удаляем неполный выходной файл, если он есть
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except:
+                pass
         raise
 
 def start(message, fs_videos, fs_mp3s, channel):
@@ -32,56 +66,75 @@ def start(message, fs_videos, fs_mp3s, channel):
     logger.info(f"Processing request {request_id}")
 
     try:
-        # Проверка входных данных
         message = json.loads(message)
         if not message or "video_fid" not in message:
             logger.error(f"Invalid message format for request {request_id}")
             return "Invalid message format"
 
-        # Получение видеофайла из MongoDB
-        logger.info(f"Retrieving video file from MongoDB for request {request_id}")
-        out = fs_videos.get(ObjectId(message["video_fid"]))
+        # Получаем видеофайл
+        logger.info(f"Retrieving video file for request {request_id}")
+        try:
+            out = fs_videos.get(ObjectId(message["video_fid"]))
+            if out is None:
+                raise ValueError("Video file not found in database")
+        except Exception as db_err:
+            logger.error(f"Database error for request {request_id}: {str(db_err)}")
+            return "Video file retrieval failed"
 
-        # Создание временного файла для видео
-        with tempfile.NamedTemporaryFile(delete=True) as tf:
-            logger.info(f"Writing video content to temporary file for request {request_id}")
-            while chunk := out.read(1024 * 1024 * 10):  # Чтение по 10 МБ
-                tf.write(chunk)
+        # Создаем временные файлы
+        temp_video_path = tempfile.mktemp(suffix=".mp4")
+        temp_audio_path = tempfile.mktemp(suffix=".mp3")
 
-            # Конвертация видео в аудио
-            tf_path = tempfile.mktemp(suffix=".mp3")
-            convert_video_to_audio(tf.name, tf_path)
+        try:
+            # Сохраняем видео во временный файл
+            with open(temp_video_path, "wb") as video_file:
+                while chunk := out.read(1024 * 1024 * 10):  # 10MB chunks
+                    video_file.write(chunk)
 
-        # Сохранение MP3-файла в MongoDB
-        logger.info(f"Saving MP3 file to MongoDB for request {request_id}")
-        with open(tf_path, "rb") as f:
-            data = f.read()
-            fid = fs_mp3s.put(data)
+            # Проверяем размер файла
+            if os.path.getsize(temp_video_path) == 0:
+                raise ValueError("Downloaded video file is empty")
 
-        # Удаление временного MP3-файла
-        os.remove(tf_path)
+            # Конвертируем
+            convert_video_to_audio(temp_video_path, temp_audio_path)
 
-        # Обновление сообщения
-        message["mp3_fid"] = str(fid)
+            # Сохраняем аудио в GridFS
+            with open(temp_audio_path, "rb") as audio_file:
+                fid = fs_mp3s.put(audio_file)
 
-        # Публикация сообщения в RabbitMQ
-        mp3_queue = os.environ.get("MP3_QUEUE")
-        if not mp3_queue:
-            logger.error(f"Environment variable 'MP3_QUEUE' is not set for request {request_id}")
-            return "Environment variable 'MP3_QUEUE' is not set"
+            message["mp3_fid"] = str(fid)
 
-        logger.info(f"Publishing message to RabbitMQ for request {request_id}")
-        channel.basic_publish(
-            exchange="",
-            routing_key=mp3_queue,
-            body=json.dumps(message),
-            properties=pika.BasicProperties(
-                delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
-            ),
-        )
+            # Отправляем сообщение
+            mp3_queue = os.environ.get("MP3_QUEUE")
+            if not mp3_queue:
+                raise ValueError("MP3_QUEUE environment variable not set")
+
+            channel.basic_publish(
+                exchange="",
+                routing_key=mp3_queue,
+                body=json.dumps(message),
+                properties=pika.BasicProperties(
+                    delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
+                )
+            )
+
+            logger.info(f"Request {request_id} processed successfully")
+            return None
+
+        finally:
+            # Удаляем временные файлы
+            for path in [temp_video_path, temp_audio_path]:
+                if os.path.exists(path):
+                    try:
+                        os.remove(path)
+                    except:
+                        pass
 
     except Exception as err:
-        logger.error(f"An error occurred for request {request_id}: {str(err)}")
+        logger.error(f"Failed to process request {request_id}: {str(err)}")
         if "fid" in locals():
-            fs_mp3s.delete(fid)
-        return f"Failed: {str(err)}"
+            try:
+                fs_mp3s.delete(fid)
+            except:
+                pass
+        return f"Processing failed: {str(err)}"
