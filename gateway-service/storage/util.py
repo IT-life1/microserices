@@ -55,7 +55,7 @@ def upload(file, fs, rabbitmq_params, access):
     # Загрузка в GridFS
     fid, err = upload_to_gridfs(fs, file)
     if err:
-        return err
+        return err  # Возвращает ("internal server error, fs level", 500)
 
     # Подготовка сообщения
     message = {
@@ -71,12 +71,14 @@ def upload(file, fs, rabbitmq_params, access):
             fs.delete(fid)
         except Exception as del_err:
             logger.error(f"Failed to delete file: {del_err}")
-        return err
+        return err  # Возвращает ("internal server error, rabbitmq connection", 500)
 
     try:
         err = publish_to_rabbitmq(channel, message)
         if err:
-            raise Exception(err[0])
+            raise Exception(err[0])  # err - это ("internal server error, rabbitmq publish", 500)
+        
+        # Возвращаем строку и статус код как отдельные элементы, а не кортеж
         return "success", 200
     except Exception as err:
         try:
