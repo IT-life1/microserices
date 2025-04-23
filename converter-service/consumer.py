@@ -4,6 +4,7 @@ import logging
 from pymongo import MongoClient
 import gridfs
 import uuid
+import json
 
 # Настройка логирования
 logging.basicConfig(
@@ -13,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main():
-    # Подключение к MongoDB
+    # Подключение к MongoDB (оставляем, так как оно может потребоваться для проверок)
     try:
         client = MongoClient(os.environ.get('MONGODB_URI'))
         db_videos = client.videos
@@ -40,14 +41,39 @@ def main():
     def callback(ch, method, properties, body):
         request_id = str(uuid.uuid4())
         logger.info(f"Received message with ID: {request_id}")
-        logger.debug(f"Message body: {body.decode('utf-8')}")
-
+        
         try:
-            # Логируем, что сообщение успешно обработано
-            logger.info(f"Processing message {request_id}: Message acknowledged")
+            message = json.loads(body.decode('utf-8'))
+            logger.debug(f"Message content: {message}")
+            
+            # Проверка наличия обязательных полей
+            if "video_fid" not in message:
+                raise ValueError("Missing video_fid in message")
+            
+            # Эмулируем успешную конвертацию
+            logger.info(f"Processing message {request_id}")
+            
+            # Добавляем фиктивный mp3_fid (в реальной системе здесь будет настоящий ID)
+            message["mp3_fid"] = "converted_" + message["video_fid"]
+            
+            # Отправляем сообщение в следующую очередь
+            mp3_queue = os.environ.get("MP3_QUEUE")
+            if not mp3_queue:
+                raise ValueError("MP3_QUEUE environment variable not set")
+            
+            channel.basic_publish(
+                exchange="",
+                routing_key=mp3_queue,
+                body=json.dumps(message),
+                properties=pika.BasicProperties(
+                    delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
+                )
+            )
+            
+            logger.info(f"Message {request_id} forwarded to MP3 queue")
             ch.basic_ack(delivery_tag=method.delivery_tag)
+            
         except Exception as e:
-            # Логируем ошибку при обработке сообщения
             logger.error(f"Error processing message {request_id}: {e}")
             ch.basic_nack(delivery_tag=method.delivery_tag)
 
@@ -59,18 +85,19 @@ def main():
 
         channel.queue_declare(queue=queue_name, durable=True)
         channel.basic_consume(
-            queue=queue_name, on_message_callback=callback
+            queue=queue_name, 
+            on_message_callback=callback,
+            auto_ack=False  # Подтверждаем сообщения только после успешной обработки
         )
         logger.info(f"Consumer started for queue: {queue_name}")
-    except Exception as e:
-        logger.error(f"Failed to start consumer: {e}")
-        return
-
-    print("Waiting for messages. To exit press CTRL+C")
-    try:
+        
+        print("Waiting for messages. To exit press CTRL+C")
         channel.start_consuming()
+        
     except KeyboardInterrupt:
         logger.info("Consumer interrupted by user")
+    except Exception as e:
+        logger.error(f"Failed to start consumer: {e}")
     finally:
         try:
             connection.close()
