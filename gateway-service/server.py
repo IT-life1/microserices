@@ -39,50 +39,55 @@ def login():
 @server.route("/upload", methods=["POST"])
 def handle_upload():
     # Аутентификация
-    access_data, err = validate.token(request)
-    if err:
-        return err, 401
-
     try:
-        # Преобразуем access_data в словарь, если это JSON строка
-        if isinstance(access_data, str):
-            access_dict = json.loads(access_data)
-        else:
-            access_dict = access_data
+        access_data, err = validate.token(request)
+        if err:
+            return jsonify({"error": err}), 401
+
+        # Преобразуем access_data в словарь
+        access_dict = json.loads(access_data) if isinstance(access_data, str) else access_data
         
         # Проверка прав
         if not access_dict.get("admin"):
-            return "not authorized", 401
+            return jsonify({"error": "not authorized"}), 401
 
     except json.JSONDecodeError:
-        return "invalid access token format", 401
+        return jsonify({"error": "invalid access token format"}), 401
     except Exception as e:
         logger.error(f"Error processing access data: {e}")
-        return "internal server error", 500
+        return jsonify({"error": "internal server error"}), 500
 
     # Проверка файлов
     if len(request.files) != 1:
-        return "exactly 1 file required", 400
+        return jsonify({"error": "exactly 1 file required"}), 400
 
     file = next(iter(request.files.values()))
 
     # Проверка типа файла
     if not file.filename.lower().endswith(('.mp4', '.avi', '.mov')):
-        return "unsupported file format", 400
+        return jsonify({"error": "unsupported file format"}), 400
 
     # Проверка размера
     if file.content_length > 100 * 1024 * 1024:  # 100 MB
-        return "file too large", 413
+        return jsonify({"error": "file too large"}), 413
 
     # Обработка загрузки
-    result, status_code = util.upload(
-        file=file,
-        fs=fs_videos,
-        rabbitmq_params=get_rabbitmq_params(),
-        access=access_dict  # Используем преобразованный словарь
-    )
-    
-    return result, status_code
+    try:
+        result, status_code = util.upload(
+            file=file,
+            fs=fs_videos,
+            rabbitmq_params=get_rabbitmq_params(),
+            access=access_dict
+        )
+        
+        if isinstance(result, tuple):  # Если где-то просочился кортеж
+            return jsonify({"error": result[0]}), result[1]
+            
+        return jsonify({"message": result}), status_code
+        
+    except Exception as e:
+        logger.error(f"Upload failed: {str(e)}")
+        return jsonify({"error": "upload processing failed"}), 500
 
 @server.route("/download", methods=["GET"])
 def download():
