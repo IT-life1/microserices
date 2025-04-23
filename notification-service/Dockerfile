@@ -23,4 +23,4 @@ COPY . /app
 
 USER appuser
 
-CMD ["python", "server.py"]
+CMD ["python", "consumer.py"]
