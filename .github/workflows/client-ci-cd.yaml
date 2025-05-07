@@ -6,10 +6,6 @@ on:
       - main
     paths:
       - 'client/**'
-    types:
-      - opened
-      - synchronize
-      - reopened
 
 jobs:
   build-push:
