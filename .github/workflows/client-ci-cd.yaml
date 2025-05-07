@@ -1,0 +1,22 @@
+name: Gateway Service CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'client/**'
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  build-push:
+    uses: ./.github/workflows/docker-build-push.yaml
+    with:
+      service: client
+      branch: ${{ github.head_ref }}
+    secrets:
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
