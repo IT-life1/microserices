@@ -41,19 +41,28 @@ export const uploadVideo = async (file, token) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await apiClient.post("/upload", formData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    onUploadProgress: progressEvent => {
-      const percent = Math.round(
-        (progressEvent.loaded * 100) / progressEvent.total
-      );
-      console.log(`Upload Progress: ${percent}%`);
-    }
-  });
+  try {
+    const response = await apiClient.post(
+      `${API_URL}/upload`, // Теперь будет http://<VM_IP>:30159/api/upload
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        onUploadProgress: progressEvent => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Upload Progress: ${percent}%`);
+        }
+      }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    console.error("Upload error:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 export const downloadMP3 = async (fid, token) => {
