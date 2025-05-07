@@ -1,3 +1,4 @@
+#so
 FROM node:16-alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
