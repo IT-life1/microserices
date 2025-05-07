@@ -9,11 +9,13 @@ from auth_svc import access
 from storage import util
 from bson.objectid import ObjectId
 import logging
+from flask_cors import CORS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 server = Flask(__name__)
+CORS(server, origins=["http://158.160.64.194:3000"])
 
 # Инициализация MongoDB
 mongo_video = PyMongo(server, uri=os.environ.get('MONGODB_VIDEOS_URI'))
