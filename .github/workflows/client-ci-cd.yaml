@@ -1,4 +1,4 @@
-name: Gateway Service CI/CD
+name: Client Front CI/CD
 
 on:
   push:
