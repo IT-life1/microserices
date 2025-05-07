@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_GATEWAY_URL || "http://localhost:8080";
+const API_URL = process.env.REACT_APP_GATEWAY_URL || "http://gateway:8080";
 
 // Создаем клиент без базового хоста — будем использовать полный URL
 const apiClient = axios.create();
