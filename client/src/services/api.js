@@ -1,14 +1,40 @@
 import axios from 'axios';
 
-const API_URL = "http://gateway:8080"; // заменить на ваш хост при деплое
+const API_URL = process.env.REACT_APP_GATEWAY_URL || "http://localhost:8080";
 
-const apiClient = axios.create({
-  baseURL: API_URL,
-});
+// Создаем клиент без базового хоста — будем использовать полный URL
+const apiClient = axios.create();
 
+/**
+ * Функция для создания строки Basic Auth
+ */
+function getBasicAuthHeader(username, password) {
+  const credentials = `${username}:${password}`;
+  const base64Credentials = btoa(credentials); // браузерная функция
+  return `Basic ${base64Credentials}`;
+}
+
+/**
+ * Логин через Basic Auth
+ */
 export const login = async (username, password) => {
-  const response = await apiClient.post("/login", { username, password });
-  return response.data;
+  const authHeader = getBasicAuthHeader(username, password);
+
+  try {
+    const response = await apiClient.post(
+      `${API_URL}/login`,
+      {}, // тело не нужно
+      {
+        headers: {
+          Authorization: authHeader,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Login error:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 export const uploadVideo = async (file, token) => {
