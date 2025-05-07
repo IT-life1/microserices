@@ -1,4 +1,4 @@
-name: Gateway Service CI/CD
+name: Client Front CI/CD
 
 on:
   push:
@@ -6,10 +6,6 @@ on:
       - main
     paths:
       - 'client/**'
-    types:
-      - opened
-      - synchronize
-      - reopened
 
 jobs:
   build-push:
