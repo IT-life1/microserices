@@ -8,7 +8,7 @@ spec:
     namespace: app
     server: https://kubernetes.default.svc
   source:
-    path: converter-service/manifest
+    path: converter-service/manifest/
     repoURL: https://github.com/IT-life1/microservices.git
     targetRevision: main
   project: default
