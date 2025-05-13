@@ -5,7 +5,7 @@ metadata:
   labels:
     app: gateway
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: gateway
@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: amozgov/gateway-service:16daae12376f6da8212efec25e50b91cc351dc08
+          image: amozgov/gateway-service:38fe998c3c757db0ef3eade329995ff67d832dd1
           ports:
             - containerPort: 5000 # Add the port if your app listens on one
           envFrom:

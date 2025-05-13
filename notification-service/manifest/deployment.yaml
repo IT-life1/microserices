@@ -5,7 +5,7 @@ metadata:
   labels:
     app: notification
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: notification
@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: notification
-          image: amozgov/notification-service:16daae12376f6da8212efec25e50b91cc351dc08
+          image: amozgov/notification-service:23cc9d812c44c1e04d2e5e4f0e8d46af0bad97e5
           ports:
             - containerPort: 5000 # Add the port if your app listens on one
           envFrom:

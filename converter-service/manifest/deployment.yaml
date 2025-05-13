@@ -5,7 +5,7 @@ metadata:
   labels:
     app: converter
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: converter
@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: converter
-          image: amozgov/converter-service:16daae12376f6da8212efec25e50b91cc351dc08
+          image: amozgov/converter-service:635574507564e94a0bb82b7d893065034ff1bc01
           ports:
             - containerPort: 5000 # Add the port if your app listens on one
           envFrom:
