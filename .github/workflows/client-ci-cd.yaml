@@ -31,7 +31,7 @@ jobs:
       # Step 2: Update deployment manifest
       - name: Update deployment manifest
         run: |
-          IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/converter-service:${{ github.sha }}"
+          IMAGE_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/client:${{ github.sha }}"
           DEPLOYMENT_FILE="./client/manifest/deployment.yaml"
           if [ -f "$DEPLOYMENT_FILE" ]; then
             echo "Updating $DEPLOYMENT_FILE with image: $IMAGE_NAME"
