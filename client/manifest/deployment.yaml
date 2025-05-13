@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: amozgov/client:15fb1590169b816d706fc0f4f7b9166c808ec73a
+          image: amozgov/client:5140725b060029c51d41c585666fc98ff17efe80
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
