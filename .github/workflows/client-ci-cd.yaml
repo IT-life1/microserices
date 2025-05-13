@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'converter-service/**'
+      - 'client/**'
     types:
       - opened
       - synchronize
