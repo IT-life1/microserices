@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Upload from "./components/Upload";
 import Downloads from "./components/Downloads";
 import Layout from "./components/Layout";
+import './index.css'; 
 
 function App() {
   return (
