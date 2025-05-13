@@ -9,7 +9,7 @@ const Downloads = () => {
 
   const handleDownload = async (e) => {
     e.preventDefault();
-    if (!fid) {
+    if (!fid.trim()) {
       setError("Введите FID");
       return;
     }
@@ -22,21 +22,40 @@ const Downloads = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <h2>Скачать MP3</h2>
-      {error && <div className="alert alert-danger">{error}</div>}
-      <form onSubmit={handleDownload}>
-        <div className="mb-3">
-          <label>FID файла</label>
-          <input
-            type="text"
-            className="form-control"
-            value={fid}
-            onChange={(e) => setFid(e.target.value)}
-          />
-        </div>
-        <button type="submit" className="btn btn-primary">Скачать</button>
-      </form>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+        <h2 className="text-2xl font-bold text-center mb-6 text-indigo-700">📥 Скачать MP3</h2>
+
+        {error && (
+          <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-md">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleDownload} className="space-y-5">
+          <div className="space-y-2">
+            <label htmlFor="fid" className="block text-sm font-medium text-gray-700">
+              Введите FID файла
+            </label>
+            <input
+              id="fid"
+              type="text"
+              placeholder="Например: abcdef123456"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={fid}
+              onChange={(e) => setFid(e.target.value)}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md transition-colors duration-200"
+          >
+            📥 Скачать файл
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
